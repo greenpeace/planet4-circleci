@@ -38,7 +38,7 @@ do
         *  )    usage;;
     esac
 done
-shift $(($OPTIND - 1))
+shift $((OPTIND - 1))
 
 #
 #   ----------- NO USER SERVICEABLE PARTS BELOW -----------
