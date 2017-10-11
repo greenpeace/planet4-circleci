@@ -30,6 +30,6 @@ RUN curl -L "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/""google
         --usage-reporting false \
         --bash-completion false \
         --path-update false \
-        --rc-path /home/${CIRCLECI_USER}/.bashrc && \
+        --rc-path "/home/${CIRCLECI_USER}/.bashrc" && \
     google-cloud-sdk/bin/gcloud --quiet components update && \
     google-cloud-sdk/bin/gcloud --quiet components update kubectl
