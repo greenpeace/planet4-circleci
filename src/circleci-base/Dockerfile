@@ -1,7 +1,7 @@
 # Planet 4 CircleCI build image
 # Branch: feature/codacy-fixes
-# Commit: 72e86bc534655af90e3ac6b505cdea5cc9e44cad
-# Build:  https://circleci.com/gh/greenpeace/planet4-circleci/244
+# Commit: 83558869b68c749c6ad21337770e22b787d15511
+# Build:  https://circleci.com/gh/greenpeace/planet4-circleci/246
 # ------------------------------------------------------------------------
 #                     DO NOT MAKE CHANGES HERE
 # This file is built automatically from ./templates/Dockerfile.in
