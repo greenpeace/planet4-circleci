@@ -18,4 +18,4 @@ curl \
   -d "$json" \
   -u "${CIRCLE_TOKEN}:" \
   -X POST \
-  https://circleci.com/api/v1.1/project/${VCS_TYPE:-github}/${user}/${repo}/build
+  https://circleci.com/api/v1.1/project/github/${user}/${repo}/build
