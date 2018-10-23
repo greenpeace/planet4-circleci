@@ -4,15 +4,14 @@ set -u
 repo=$1
 user=greenpeace
 branch=${2:-develop}
-ref=${3:-branch}
 
-json="{
-  \"$ref\": \"$branch\"
-}"
-echo ""
-echo "The json is"
-echo $json
-echo ""
+json=$(jq -n \
+  --arg REF "$ref" \
+  --arg VAL "$branch" \
+'{
+  "branch": $VAL
+}')
+
 curl \
   --header "Content-Type: application/json" \
   -d "$json" \
