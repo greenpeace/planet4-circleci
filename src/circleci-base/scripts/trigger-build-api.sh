@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -u
+# shellcheck disable=SC2016
+set -eu
 
 repo=$1
 user=greenpeace
@@ -8,8 +9,9 @@ branch=${2:-develop}
 json=$(jq -n \
   --arg VAL "$branch" \
 '{
-  "branch": $VAL
+	"branch": $VAL
 }')
+
 
 curl \
   --header "Content-Type: application/json" \
