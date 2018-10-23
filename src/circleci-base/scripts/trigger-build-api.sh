@@ -6,7 +6,6 @@ user=greenpeace
 branch=${2:-develop}
 
 json=$(jq -n \
-  --arg REF "$ref" \
   --arg VAL "$branch" \
 '{
   "branch": $VAL
