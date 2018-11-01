@@ -55,9 +55,9 @@ RUN git clone https://github.com/sstephenson/bats.git && \
       && \
     pip install yamllint && \
     npm install -g \
+      gulp \
       junit-merge \
       tap-xunit \
-      gulp \
       yarn && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/* && \
