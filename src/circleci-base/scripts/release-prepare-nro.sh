@@ -71,7 +71,7 @@ else
   else
     echo "---3.2 Triggering  ..."
     REPO=$(git remote get-url origin | cut -d'/' -f 5)
-    trigger-build-api.sh ${REPO} "release/$new_release"
+    trigger-build-api.sh "${REPO}" "release/$new_release"
     # git commit --allow-empty -m ":robot: release/$new_release Build trigger"
   fi
 fi
