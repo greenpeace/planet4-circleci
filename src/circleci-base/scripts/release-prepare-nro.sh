@@ -47,6 +47,21 @@ then
     echo "---2.2 New commit with automated modifications"
     git commit -m ":robot: release/$new_release Automated modifications "
   fi
+
+  message=$(git show --format=%B | grep -v ":robot: Build trigger")
+
+  echo "---2.3 Remove all the build trigger notifications from the latest commit message"
+  # Remove all the build trigger notifications from the latest commit message
+  git commit --allow-empty --amend -m "$message"
+
+  echo "---2.4 Create/push the new release branch "
+  # Create the new release branch
+  git push -u origin "release/$new_release"
+
+  echo "---2.5 Delete the old release branch "
+  # Delete the old release branch
+  git push origin --delete "release/$old_release" || exit 0
+
 else
   # No local changes
   echo "---3. No local changes"
@@ -54,21 +69,11 @@ else
   then
     echo "---3.1 Nothing to do: no new changes and have already merged develop -> release in this job"
   else
-    echo "---3.2 Creating empty commit as new build trigger ..."
-    git commit --allow-empty -m ":robot: release/$new_release Build trigger"
+    echo "---3.2 Triggering  ..."
+    REPO=$(git remote get-url origin | cut -d'/' -f 5)
+    trigger-build-api.sh $REPO "release/$new_release"
+    # git commit --allow-empty -m ":robot: release/$new_release Build trigger"
   fi
 fi
 
-message=$(git show --format=%B | grep -v ":robot: Build trigger")
 
-echo "---4. Remove all the build trigger notifications from the latest commit message"
-# Remove all the build trigger notifications from the latest commit message
-git commit --allow-empty --amend -m "$message"
-
-echo "---5. Create the new release branch "
-# Create the new release branch
-git push -u origin "release/$new_release"
-
-echo "---6. Delete the old release branch "
-# Delete the old release branch
-git push origin --delete "release/$old_release" || exit 0
