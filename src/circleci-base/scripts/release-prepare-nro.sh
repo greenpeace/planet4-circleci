@@ -82,7 +82,7 @@ else
 
   echo "---3.2.3 Check if old release branch still exists "
   gitlsremote=$(git ls-remote)
-  if [[ $gitlsremote == *"release/$old_release"* ]];
+  if [[ $gitlsremote =~ release/$old_release ]]
   then
     # Delete the old release branch
     echo "---3.2.4 Old branch exists, delete it "
