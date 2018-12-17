@@ -20,14 +20,13 @@ merged=false
 
 mkdir -p /tmp/workspace
 
-
 echo "--1.0 Before the first if"
 if release-start.sh "$new_release"
 then
-  echo "--1.1 The release-start returned true. We change the variable merged to true"
+  echo "--1.1 New release branch created: release/$new_release"
   merged=true
 else
-  echo "--1.1 The release-start returned false. The Release branch already exists"
+  echo "--1.1 Release branch release/$new_release already exists"
   # Release branch already exists
   git checkout "release/$new_release"
 
@@ -46,15 +45,16 @@ pin-composer-versions.sh
 # If there are any local changes
 if ! git diff --exit-code
 then
+  echo "---2. Staging modifications"
+  # Stage changes
   git add .
-  echo "---2. We have local changes"
-  # We have local changes
+
   if [[ "$merged" = "true" ]]
   then
-    echo "---2.1. Since we've merged changes from develop, let's amend that commit"
+    echo "---2.1 Since we've merged changes from develop, let's amend that commit"
     git commit --amend --no-edit --allow-empty
   else
-    echo "---2.2 New commit with automated modifications"
+    echo "---2.2 Create new commit with automated modifications"
     git commit -m ":robot: release/$new_release Automated modifications "
     merged=true
   fi
@@ -64,31 +64,28 @@ echo "--3.0 Before the final if"
 if [[ "$merged" = "false" ]]
 then
   # No local changes
-  echo "---3.1 No local changes. Triggering"
-  REPO=$(git remote get-url origin | cut -d'/' -f 2 | cut -d'.' -f1)
-  echo "---3.1.1 The repo we will try to trigger is $REPO"
-  trigger-build-api.sh "${REPO}" "release/$new_release"
+  repo=$(git remote get-url origin | cut -d'/' -f 2 | cut -d'.' -f1)
+  echo "---3.1 No changes to merge. Triggering $repo@release/$new_release via API"
+  trigger-build-api.sh "$repo" "release/$new_release"
 else
-  echo "---3.2 Local changes. Pushing by git"
-  message=$(git show --format=%B | grep -v ":robot: Build trigger")
+  echo "---3.2 Local changes have been merged, pushing changes to remote"
 
   echo "---3.2.1 Remove all the build trigger notifications from the latest commit message"
   # Remove all the build trigger notifications from the latest commit message
+  message=$(git show --format=%B | grep -v ":robot: Build trigger")
   git commit --allow-empty --amend -m "$message"
 
-  echo "---3.2.2 Create/push the new release branch "
-  # Create the new release branch
+  echo "---3.2.2 Push the new release branch release/$new_release"
+  # Push the new release branch
   git push -u origin "release/$new_release"
 
-  echo "---3.2.3 Check if old release branch still exists "
+  echo "---3.2.3 Check if old release branch still exists"
   gitlsremote=$(git ls-remote)
   if [[ $gitlsremote =~ release/$old_release ]]
   then
     # Delete the old release branch
-    echo "---3.2.4 Old branch exists, delete it "
+    echo "---3.2.4 Delete stale release branch: release/$old_release"
     git push origin --delete "release/$old_release"
   fi
 
 fi
-
-
