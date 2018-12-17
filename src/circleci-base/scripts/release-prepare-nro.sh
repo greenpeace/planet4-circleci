@@ -34,8 +34,10 @@ else
   # If there are any changes from develop
   # Merge changes from develop to release
   git merge -Xtheirs --no-edit --log -m ":robot: release/$new_release Merge develop" develop | tee /tmp/workspace/merge.log
-  grep -q "Already up-to-date." /tmp/workspace/merge.log  || merged=true
-  grep -q "Already up-to-date." /tmp/workspace/merge.log  || echo "--1.2 We found the string Already up-to-date in the merge log"
+  grep -q "Already up-to-date." /tmp/workspace/merge.log || {
+    echo "--1.2 We merged changes from develop into release/$new_release"
+    merged=true;
+  }
 fi
 
 # Perform NRO develop to release manipulations
