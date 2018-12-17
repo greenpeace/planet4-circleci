@@ -33,6 +33,7 @@ else
   # If there are any changes from develop
   # Merge changes from develop to release
   git merge -Xtheirs --no-edit --log -m ":robot: release/$new_release Merge develop" develop | tee /tmp/workspace/merge.log
+  
   grep -q "Already up-to-date." /tmp/workspace/merge.log || {
     echo "--1.2 We merged changes from develop into release/$new_release"
     merged=true;
@@ -40,21 +41,23 @@ else
 fi
 
 # Perform NRO develop to release manipulations
+echo
+echo "---2. Performing automated release modifications ..."
 pin-composer-versions.sh
 
 # If there are any local changes
 if ! git diff --exit-code
 then
-  echo "---2. Staging modifications"
+  echo "---2.1 Staging modifications"
   # Stage changes
   git add .
 
   if [[ "$merged" = "true" ]]
   then
-    echo "---2.1 Since we've merged changes from develop, let's amend that commit"
+    echo "---2.1.1 Since we've merged changes from develop, let's amend that commit"
     git commit --amend --no-edit
   else
-    echo "---2.2 Create new commit with automated modifications"
+    echo "---2.1.2 Create new commit with automated modifications"
     git commit -m ":robot: release/$new_release Automated modifications "
     merged=true
   fi
