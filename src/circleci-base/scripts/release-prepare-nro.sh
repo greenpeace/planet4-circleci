@@ -73,7 +73,7 @@ else
   echo "---3.2.1 Remove all the build trigger notifications from the latest commit message"
   # Remove all the build trigger notifications from the latest commit message
   message=$(git show --format=%B | grep -v ":robot: Build trigger")
-  git commit --allow-empty --amend -m "$message"
+  git commit --amend -m "$message"
 
   echo "---3.2.2 Push the new release branch release/$new_release"
   # Push the new release branch
