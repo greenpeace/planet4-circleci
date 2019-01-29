@@ -31,7 +31,6 @@ echo "-- 1.0   Before the first if"
 if release-start.sh "$new_release"
 then
   echo "-- 1.1   New release branch created: release/$new_release"
-  merged=true
 else
   echo "-- 1.1   Release branch release/$new_release already exists"
   # Release branch already exists
