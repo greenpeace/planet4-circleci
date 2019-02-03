@@ -5,6 +5,7 @@ set -eo pipefail
 # Optionally builds locally or on Google's cloud builder service
 
 # UTILITY
+
 function usage {
   >&2 echo "Usage: $0 [-l|r|v] [-c <configfile>] ...
 
@@ -20,7 +21,9 @@ Options:
 }
 
 # -----------------------------------------------------------------------------
+
 # COMMAND LINE OPTIONS
+
 OPTIONS=':vc:lr'
 while getopts $OPTIONS option
 do
@@ -38,7 +41,9 @@ done
 shift $((OPTIND - 1))
 
 # -----------------------------------------------------------------------------
+
 # CREATE TEMP DIR AND CLEAN ON EXIT
+
 function finish() {
   rm -fr "$TMPDIR"
 }
@@ -47,32 +52,16 @@ trap finish EXIT
 TMPDIR=$(mktemp -d "${TMPDIR:-/tmp/}$(basename 0).XXXXXXXXXXXX")
 
 # -----------------------------------------------------------------------------
+
 # OUTPUT HELPERS
 wget -q -O "${TMPDIR}/pretty-print.sh" https://gist.githubusercontent.com/27Bslash6/ffa9cfb92c25ef27cad2900c74e2f6dc/raw/7142ba210765899f5027d9660998b59b5faa500a/bash-pretty-print.sh
 # shellcheck disable=SC1090
 . "${TMPDIR}/pretty-print.sh"
 
 # -----------------------------------------------------------------------------
-# SET BUILD_DIR FROM REAL PATH
-# https://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
-source="${BASH_SOURCE[0]}"
-while [[ -h "$source" ]]
-do # resolve $source until the file is no longer a symlink
-  dir="$( cd -P "$( dirname "$source" )" && pwd )"
-  source="$(readlink "$source")"
-  # if $source was a relative symlink, we need to resolve it relative to the
-  # path where the symlink file was located
-  [[ $source != /* ]] && source="$dir/$source"
-done
-BUILD_DIR="$( cd -P "$( dirname "$source" )/.." && pwd )"
-# -----------------------------------------------------------------------------
 
-# Setup environment variables
-# shellcheck source=/dev/null
-. "${BUILD_DIR}/bin/env.sh"
-
-
-# Reads key-value file as functionargument, extracts and wraps key with ${..} for use in envsubst
+# Reads key-value file as function argument, extracts and wraps key with ${..}
+# for use in envsubst file templating
 function get_var_array() {
   set -eu
   local file
@@ -92,17 +81,17 @@ while IFS=$'\n' read -r line
 do
   ENVVARS+=("$line")
 done < <(get_var_array "config.default")
-
 ENVVARS_STRING="$(printf "%s:" "${ENVVARS[@]}")"
 ENVVARS_STRING="${ENVVARS_STRING%:}"
 
-envsubst "${ENVVARS_STRING}" < "${BUILD_DIR}/src/circleci-base/templates/Dockerfile.in" > "${BUILD_DIR}/src/circleci-base/Dockerfile.tmp"
-envsubst "${ENVVARS_STRING}" < "${BUILD_DIR}/README.md.in" > "${BUILD_DIR}/README.md.tmp"
+envsubst "${ENVVARS_STRING}" < "src/circleci-base/templates/Dockerfile.in" > "src/circleci-base/Dockerfile.tmp"
+envsubst "${ENVVARS_STRING}" < "README.md.in" > "README.md.tmp"
 
-DOCKER_BUILD_STRING="# ${APPLICATION_NAME}
-# Branch: ${BRANCH_NAME}
+DOCKER_BUILD_STRING="# gcr.io/planet-4-151612/circleci-base:${BUILD_TAG}
+# $(echo "${APPLICATION_DESCRIPTION}" | tr -d '"')
+# Branch: ${CIRCLE_TAG:-${CIRCLE_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}}
 # Commit: ${CIRCLE_SHA1:-$(git rev-parse HEAD)}
-# Build:  ${CIRCLE_BUILD_URL:-"(local)"}
+# Build:  ${BUILD_NUM}
 # ------------------------------------------------------------------------
 #                     DO NOT MAKE CHANGES HERE
 # This file is built automatically from ./templates/Dockerfile.in
@@ -110,56 +99,47 @@ DOCKER_BUILD_STRING="# ${APPLICATION_NAME}
 "
 
 _build "Rewriting Dockerfile from template ..."
-echo -e "${DOCKER_BUILD_STRING}
-$(cat "${BUILD_DIR}/src/circleci-base/Dockerfile.tmp")" > "${BUILD_DIR}/src/circleci-base/Dockerfile"
-rm "${BUILD_DIR}/src/circleci-base/Dockerfile.tmp"
+echo "${DOCKER_BUILD_STRING}
+$(cat "src/circleci-base/Dockerfile.tmp")" > "src/circleci-base/Dockerfile"
+rm "src/circleci-base/Dockerfile.tmp"
 
 _build "Rewriting README.md from template ..."
-echo -e "$(cat "${BUILD_DIR}/README.md.tmp")
-Build: ${CIRCLE_BUILD_URL:-"(local)"}" > "${BUILD_DIR}/README.md"
-rm "${BUILD_DIR}/README.md.tmp"
+echo "$(cat "README.md.tmp")
+Build: ${CIRCLE_BUILD_URL:-"(local)"}" > "README.md"
+rm "README.md.tmp"
 
-# Process array of cloudbuild substitutions
-function getSubstitutions() {
-  local -a arg=("$@")
-  s="$(printf "%s," "${arg[@]}" )"
-  echo "${s%,}"
-}
-
-# Cloudbuild.yaml template substitutions
-CLOUDBUILD_SUBSTITUTIONS=(
-  "_BRANCH_TAG=${BRANCH_NAME//[^a-zA-Z0-9]/-}" \
-  "_BUILD_NUMBER=${CIRCLE_BUILD_NUM:-$(git rev-parse --short HEAD)}" \
-  "_GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}" \
-  "_NAMESPACE=${NAMESPACE}" \
-  "_REVISION_TAG=${CIRCLE_TAG:-$(git rev-parse --short HEAD)}" \
-)
-CLOUDBUILD_SUBSTITUTIONS_STRING=$(getSubstitutions "${CLOUDBUILD_SUBSTITUTIONS[@]}")
+# -----------------------------------------------------------------------------
 
 # Submit the build
 # @todo Implement local build
 # $ circlecli build . -e GCLOUD_SERVICE_KEY=$(base64 ~/.config/gcloud/Planet-4-circleci.json)
 if [[ "$BUILD_LOCALLY" = 'true' ]]
 then
-  if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]
-  then
-    _fatal "GOOGLE_APPLICATION_CREDENTIALS environment variable not set.
-
-Please set GOOGLE_APPLICATION_CREDENTIALS to the path of your GCP service key and try again.
-"
-  fi
-
-  if [[ $(type -P "circleci") ]]
-  then
-    _build "Performing build locally ..."
-    circleci build . -e "GCLOUD_SERVICE_KEY=$(base64 "${GOOGLE_APPLICATION_CREDENTIALS}")"
-  else
-    _fatal "ERROR :: circlecli not found in PATH. Please install from https://circleci.com/docs/2.0/local-jobs/"
-  fi
+  time docker build "src/circleci-base" \
+    --tag "${NAMESPACE}/${GOOGLE_PROJECT_ID}/circleci-base:${BUILD_BRANCH}" \
+    --tag "${NAMESPACE}/${GOOGLE_PROJECT_ID}/circleci-base:${BUILD_NUM}" \
+    --tag "${NAMESPACE}/${GOOGLE_PROJECT_ID}/circleci-base:${BUILD_TAG}"
 fi
 
 if [[ "${BUILD_REMOTELY}" = 'true' ]]
 then
+  # Process array of cloudbuild substitutions
+  function getSubstitutions() {
+    local -a arg=("$@")
+    s="$(printf "%s," "${arg[@]}" )"
+    echo "${s%,}"
+  }
+
+  # Cloudbuild.yaml template substitutions
+  CLOUDBUILD_SUBSTITUTIONS=(
+    "_BRANCH_TAG=${BUILD_BRANCH}" \
+    "_BUILD_NUMBER=${CIRCLE_BUILD_NUM:-$(git rev-parse --short HEAD)}" \
+    "_GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}" \
+    "_NAMESPACE=${NAMESPACE}" \
+    "_REVISION_TAG=${BUILD_NUM:-${CIRCLE_TAG:-$(git rev-parse --short HEAD)}}" \
+  )
+  CLOUDBUILD_SUBSTITUTIONS_STRING=$(getSubstitutions "${CLOUDBUILD_SUBSTITUTIONS[@]}")
+
   _build "Sending build request to GCR ..."
   # Avoid sending entire .git history as build context to save some time and bandwidth
   # Since git builtin substitutions aren't available unless triggered
@@ -177,5 +157,4 @@ fi
 if [[ -z "$BUILD_LOCALLY" ]] && [[ -z "${BUILD_REMOTELY}" ]]
 then
   _notice "No build option specified"
-  usage
 fi
