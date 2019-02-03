@@ -44,7 +44,7 @@ RUN npm install -g \
 USER ${CIRCLECI_USER}
 
 RUN echo "Hadolint v${HADOLINT_VERSION} ..." && \
-    curl "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o /usr/local/bin/hadolint && \
+    curl -sSL "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o /usr/local/bin/hadolint && \
     chmod 755 /usr/local/bin/hadolint && \
     echo "Shellcheck v${SHELLCHECK_VERSION} ..." && \
     curl "https://shellcheck.storage.googleapis.com/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz && \
