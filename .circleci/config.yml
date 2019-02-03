@@ -41,7 +41,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Setup test results
           command: |
@@ -144,7 +145,8 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Configure
           command: |
