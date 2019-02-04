@@ -50,10 +50,11 @@ export BUILD_TAG
 
 .DEFAULT_GOAL := build
 
-.PHONY: all lint lint-sh lint-yaml lint-docker rewrite pull build
+.PHONY: all lint lint-sh lint-yaml lint-docker rewrite template pull build
 
+template: rewrite
 rewrite:
-		./bin/build.sh
+		./bin/build.sh -t
 
 lint: lint-yaml lint-sh lint-docker
 
@@ -70,8 +71,8 @@ lint-docker: rewrite
 pull:
 		docker pull $(IMAGE_FROM)
 
-build: lint base
-		./bin/build.sh -l
+build: lint
+		./bin/build.sh -b
 
 push: push-tag push-latest
 
