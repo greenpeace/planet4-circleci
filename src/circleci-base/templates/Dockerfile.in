@@ -5,8 +5,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 LABEL maintainer=${MAINTAINER} \
       description=${APPLICATION_DESCRIPTION}
 
-ENV CIRCLECI_USER="${CIRCLECI_USER}" \
-    PATH="/home/${CIRCLECI_USER}/scripts:/home/${CIRCLECI_USER}/google-cloud-sdk/bin:${PATH}"
+ENV CIRCLECI_USER=${CIRCLECI_USER} \
+    PATH=/home/${CIRCLECI_USER}/scripts:/home/${CIRCLECI_USER}/google-cloud-sdk/bin:${PATH}
 
 USER root
 
@@ -24,7 +24,15 @@ RUN apt-get install -y --no-install-recommends \
     rm -rf /tmp/* && \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip install yamllint
+
+RUN npm install -g \
+      junit-merge \
+      tap-xunit
+
 WORKDIR /home/${CIRCLECI_USER}
+
+COPY --chown=${CIRCLECI_USER}:${CIRCLECI_USER} .curlrc /home/${CIRCLECI_USER}
 
 RUN mkdir -p scripts && \
     git clone https://github.com/sstephenson/bats.git && \
@@ -35,33 +43,25 @@ RUN mkdir -p scripts && \
     rm -fr git-flow && \
     chown -R ${CIRCLECI_USER}:${CIRCLECI_USER} /usr/local/bin
 
-RUN pip install yamllint
-
-RUN npm install -g \
-      junit-merge \
-      tap-xunit
-
 USER ${CIRCLECI_USER}
 
 RUN echo "Hadolint v${HADOLINT_VERSION} ..." && \
-    curl -sSL "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o /usr/local/bin/hadolint && \
+    curl -sS "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64" -o /usr/local/bin/hadolint && \
     chmod 755 /usr/local/bin/hadolint && \
     echo "Shellcheck v${SHELLCHECK_VERSION} ..." && \
-    curl "https://shellcheck.storage.googleapis.com/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz && \
+    curl -sS "https://shellcheck.storage.googleapis.com/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" -o /tmp/shellcheck.tar.xz && \
     tar xf /tmp/shellcheck.tar.xz -C /tmp/ && \
     mv /tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck /usr/local/bin && \
     echo "Helm v${HELM_VERSION} ..." && \
-    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash - && \
+    curl -sS https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash - && \
     rm -rf /tmp/*
 
-RUN curl "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GOOGLE_SDK_VERSION}-linux-x86_64.tar.gz" | tar xz && \
+RUN curl -sS "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GOOGLE_SDK_VERSION}-linux-x86_64.tar.gz" | tar xz && \
     CLOUDSDK_CORE_DISABLE_PROMPTS=1 ./google-cloud-sdk/install.sh \
         --usage-reporting false \
         --bash-completion false \
         --path-update false && \
     gcloud --quiet components update kubectl cloud_sql_proxy && \
     rm -fr /tmp/*
-
-COPY --chown=${CIRCLECI_USER}:${CIRCLECI_USER} .curlrc /home/${CIRCLECI_USER}
 
 COPY --chown=${CIRCLECI_USER}:${CIRCLECI_USER} ./scripts /home/${CIRCLECI_USER}/scripts
