@@ -50,7 +50,10 @@ export BUILD_TAG
 
 .DEFAULT_GOAL := build
 
-.PHONY: all lint lint-sh lint-yaml lint-docker rewrite template pull build
+.PHONY: clean lint lint-sh lint-yaml lint-docker rewrite template pull build
+
+clean:
+
 
 template: rewrite
 rewrite:
@@ -60,7 +63,6 @@ lint: lint-yaml lint-sh lint-docker
 
 lint-yaml:
 		yamllint -d "{extends: default, rules: {line-length: {max: 80, level: warning}}}" .circleci/config.yml
-		yamllint cloudbuild.yaml
 
 lint-sh:
 		find . -type f -name '*.sh' | xargs shellcheck -x
