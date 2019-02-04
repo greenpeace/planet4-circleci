@@ -10,10 +10,13 @@ include config.custom
 export $(shell sed 's/=.*//' config.custom)
 endif
 
-# Base image
+# Parent image
 ifeq ($(strip $(IMAGE_FROM)),)
 IMAGE_FROM=$(BASE_NAMESPACE)/$(BASE_IMAGE):$(BASE_TAG)
+export IMAGE_FROM
 endif
+
+# ---
 
 SED_MATCH ?= [^a-zA-Z0-9._-]
 
@@ -39,14 +42,17 @@ else
 PUSH_LATEST := true
 endif
 
+export BUILD_NUM
+export BUILD_BRANCH
+export BUILD_TAG
+
+# ============================================================================
+
 .DEFAULT_GOAL := build
 
 .PHONY: all lint lint-sh lint-yaml lint-docker rewrite pull build
 
 rewrite:
-		BUILD_BRANCH=$(BUILD_BRANCH) \
-		BUILD_NUM=$(BUILD_NUM) \
-		BUILD_TAG=$(BUILD_TAG) \
 		./bin/build.sh
 
 lint: lint-yaml lint-sh lint-docker
@@ -64,11 +70,7 @@ lint-docker: rewrite
 pull:
 		docker pull $(IMAGE_FROM)
 
-build: lint
-		BUILD_BRANCH=$(BUILD_BRANCH) \
-		BUILD_NUM=$(BUILD_NUM) \
-		BUILD_TAG=$(BUILD_TAG) \
-		IMAGE_FROM=$(IMAGE_FROM) \
+build: lint base
 		./bin/build.sh -l
 
 push: push-tag push-latest
@@ -78,7 +80,7 @@ push-tag:
 		docker push gcr.io/planet-4-151612/circleci-base:$(BUILD_NUM)
 
 push-latest:
-		if [[ "$(PUSH_LATEST)" = "true" ]]; then { \
+		@if [[ "$(PUSH_LATEST)" = "true" ]]; then { \
 			docker tag gcr.io/planet-4-151612/circleci-base:$(BUILD_NUM) gcr.io/planet-4-151612/circleci-base:latest; \
 			docker push gcr.io/planet-4-151612/circleci-base:latest; \
 		}	else { \
