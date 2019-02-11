@@ -20,7 +20,8 @@ ENV CIRCLECI_USER=circleci \
 
 USER root
 
-RUN apt-get install -y --no-install-recommends \
+RUN add-apt-repository ppa:rmescandon/yq && \
+    apt-get install -y --no-install-recommends \
       gawk \
       gettext \
       mysql-client \
@@ -30,6 +31,7 @@ RUN apt-get install -y --no-install-recommends \
       silversearcher-ag \
       vim \
       wget \
+      yq \
       && \
     rm -rf /tmp/* && \
     rm -rf /var/lib/apt/lists/*
