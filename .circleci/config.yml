@@ -114,10 +114,12 @@ workflows:
           timeout: '300'
           private_registry: false
           # analysis_fail: true
+          requires:
+            - build
       - hold-promote:
           type: approval
           requires:
-            - build
+            - anchore/image_scan
           filters:
             branches:
               only: develop
