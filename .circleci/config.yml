@@ -112,6 +112,7 @@ workflows:
       - anchore/image_scan:
           image_name: greenpeaceinternational/circleci-base:develop
           timeout: '600'
+          policy_failure: true
           private_registry: false
           # analysis_fail: true
           requires:
