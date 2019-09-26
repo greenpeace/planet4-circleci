@@ -111,7 +111,7 @@ workflows:
               ignore: master
       - anchore/image_scan:
           image_name: greenpeaceinternational/circleci-base:develop
-          timeout: '300'
+          timeout: '600'
           private_registry: false
           # analysis_fail: true
           requires:
