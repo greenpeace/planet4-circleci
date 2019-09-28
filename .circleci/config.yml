@@ -114,7 +114,7 @@ workflows:
           timeout: '600'
           policy_failure: true
           private_registry: false
-          # analysis_fail: true
+          policy_bundle_file_path: ${HOME}/project/.circleci/.anchore/policy_bundle.json
           requires:
             - build
       - hold-promote:
