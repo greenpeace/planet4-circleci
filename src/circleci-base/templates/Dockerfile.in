@@ -16,9 +16,7 @@ RUN apt-get update && \
       gawk \
       gettext \
       default-mysql-client \
-      python-pip \
-      python-pkg-resources \
-      python-setuptools \
+      python3-pip \
       rsync \
       silversearcher-ag \
       vim \
@@ -27,7 +25,7 @@ RUN apt-get update && \
     rm -rf /tmp/* && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir \
+RUN pip3 install --no-cache-dir \
       yamllint==${YAMLLINT_VERSION} \
       yq==${YQ_VERSION}
 
