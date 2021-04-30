@@ -71,8 +71,7 @@ def post_comment(pr_endpoint, comment_endpoint, comment_id, body):
     if comment_id:
         endpoint = '{0}{1}'.format(comment_endpoint, comment_id)
         print(endpoint)
-        response = requests.patch(endpoint, headers=headers, data=json.dumps(data))
-        return response.json()
+        requests.delete(endpoint, headers=headers)
 
     response = requests.post(pr_endpoint, headers=headers, data=json.dumps(data))
     return response.json()
