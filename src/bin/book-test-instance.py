@@ -3,28 +3,27 @@
 # https://github.com/greenpeace/planet4-builder/commit/d6640747ad20ed54b7e8d40b0920af106880e17f
 
 import argparse
+from base64 import b64decode
+from jira import JIRA
 import json
-from oauthlib.oauth1 import SIGNATURE_RSA
 import os
 import re
-import requests
-from requests.auth import HTTPBasicAuth
-from requests_oauthlib import OAuth1
+import sys
 
-from p4.apis import api_failed, api_query
+from p4.apis import api_query
 from p4.github import (get_last_commit_date, get_repo_endpoints,
                        get_pr_test_instance, has_open_pr_labeled_with_instance,
                        add_issue_label)
 
-JIRA_API = 'https://jira.greenpeace.org/rest/api/2'
+JIRA_SERVER = 'https://greenpeace-planet4.atlassian.net/'
+JIRA_USER = os.getenv('JIRA_USER')
+JIRA_TOKEN = os.getenv('JIRA_TOKEN')
 GITHUB_API = 'https://api.github.com'
 SWARM_API = 'https://us-central1-planet-4-151612.cloudfunctions.net/p4-test-swarm'
-
 INSTANCE_REPO_PREFIX = 'greenpeace/planet4-test-'
-JIRA_INSTANCE_FIELD = 'customfield_13000'
 
 
-def get_jira_issue(pr=None, jira_key=None):
+def get_jira_issue(pr=None):
     """
     Fetch Jira ticket
 
@@ -45,135 +44,43 @@ def get_jira_issue(pr=None, jira_key=None):
         return None
 
     logs.append('Jira key found: {0}'.format(jira_key))
-    search_result = api_query(
-        JIRA_API + '/search?jql=key={0}'.format(jira_key))
-    if not search_result['issues']:
-        raise Exception(
-            'Issue could not be found with key {0}'.format(jira_key))
 
-    issue = search_result['issues'][0]
-    return {
-        'key': issue['key'],
-        'title': issue['fields']['summary'],
-        'state': issue['fields']['status']['name'],
-        'assignee': issue['fields']['assignee']['name'] if issue['fields']['assignee'] else None,
-        'test_instance': (issue['fields'][JIRA_INSTANCE_FIELD][0]['value']
-                          if issue['fields'][JIRA_INSTANCE_FIELD] else None),
-    }
+    token = b64decode(JIRA_TOKEN).decode('utf-8').replace('\n', '')
+    jira = JIRA(server=JIRA_SERVER, basic_auth=(JIRA_USER, token))
+
+    try:
+        issue = jira.issue(jira_key)
+    except:  # noqa: E722
+        print('No such ticket')
+        sys.exit(1)
+
+    return issue
 
 
-def book_instance(instance, jira_issue):
+def book_instance(instance, issue):
     """
-    Check jira ticket status & assigned instance
-    Move status if needed, book instance on ticket
+    Check jira issue status & assigned instance
+    Move status if needed, book instance on issue
 
-    @todo: make jira_issue a list of issues,
+    @todo: make issue a list of issues,
     loop through it to be able to lock multiple issues to one instance & pr
     """
 
-    current_state = jira_issue['state']
-    editable_status = ['Open', 'Validated']
-    invalid_status = ['Closed']
+    current_state = issue.fields.status.name
+    invalid_status = ['Closed', 'Open']
 
     if current_state in invalid_status:
         raise Exception(
             'Issue is in an invalid state <{0}>, stopping process.'.format(current_state))
 
-    # Transition issue to valid status
-    if current_state in editable_status:
-        transition_issue(jira_issue)
-    else:
-        logs.append('Issue is not in an editable status <{0}>, skipping transition.'.format(
-            current_state
-        ))
-
     # Fill <instance> field
-    if not jira_issue['test_instance'] or jira_issue['test_instance'] != instance:
-        edit_issue(jira_issue, instance)
+    if (not issue.fields.customfield_13000 or issue.fields.customfield_13000[0].value != instance):
+        issue.update(fields={'customfield_13000': [{'value': instance}]})
     else:
         logs.append('Issue is already configured for instance ({0}),'
                     ' skipping configuration.'.format(instance))
 
     return True
-
-
-def transition_issue(jira_issue):
-    if not jira_auth:
-        raise Exception('Issue cannot be modified without Jira credentials.')
-
-    in_dev = 'IN DEVELOPMENT'
-    transition_endpoint = '{0}/issue/{1}/transitions'.format(
-        JIRA_API, jira_issue['key'])
-    response = api_query(transition_endpoint, auth=jira_auth['auth'])
-
-    available_transitions = list(map(
-        lambda s: {'id': s['id'], 'status': s['to']
-                   ['name'], 'name': s['name']},
-        response['transitions']
-    ))
-    logs.append(available_transitions)
-    dev_transition = list(
-        filter(lambda t: t['status'] == in_dev, available_transitions))[0]
-
-    # Transition not available
-    if not dev_transition:
-        return True
-
-    # Transition
-    data = {'transition': {'id': dev_transition['id']}}
-
-    logs.append('POST {0}\n{1}'.format(transition_endpoint, json.dumps(data, indent=4)))
-
-    if dryrun:
-        return True
-
-    response = requests.post(transition_endpoint,
-                             auth=jira_auth['auth'],
-                             data=json.dumps(data),
-                             headers={
-                                 'Content-type': 'application/json',
-                                 'Accept': 'application/json'
-                             })
-
-    logs.append('Transitioned issue, response: ')
-    logs.extend([response.status_code, response.headers, response.text])
-
-    failed = api_failed(response, transition_endpoint, exit_on_error=False)
-    if failed:
-        logs.append('Status transition failed, please move the issue manually in Jira.')
-        return False
-
-    return True
-
-
-def edit_issue(jira_issue, instance):
-    if not jira_auth:
-        raise Exception('Issue cannot be modified without Jira credentials.')
-
-    endpoint = '{0}/issue/{1}'.format(JIRA_API, jira_issue['key'])
-    data = {'fields': {JIRA_INSTANCE_FIELD: [{'value': instance}], }}
-
-    if dryrun:
-        logs.append("PUT {0}\n{1}".format(endpoint, json.dumps(data, indent=4)))
-        return True
-
-    response = requests.put(endpoint,
-                            auth=jira_auth['auth'],
-                            data=json.dumps(data),
-                            headers={'Content-type': 'application/json'})
-    failed = api_failed(response, endpoint, exit_on_error=False)
-    if failed:
-        raise Exception(
-            'Issue could not be edited. Jira status code: {0}'.format(response.status_code))
-
-    return True
-
-
-"""
-
-Instances
-
-"""
 
 
 def get_available_instance():
@@ -217,53 +124,10 @@ def get_instances():
     return api_query(SWARM_API)
 
 
-"""
-
-API stuff
-
-"""
-
-
-def get_jira_auth():
-    """
-    Based on env variables
-
-    https://developer.atlassian.com/server/jira/platform/oauth/
-    """
-
-    if os.getenv('JIRA_CLIENT_KEY'):
-        if os.getenv('JIRA_PRIVATE_KEY'):
-            key = os.getenv('JIRA_PRIVATE_KEY')
-        else:
-            key = None
-
-        return {
-            'type': 'oauth',
-            'auth': OAuth1(
-                os.getenv('JIRA_CLIENT_KEY'),
-                resource_owner_key=os.getenv('JIRA_OAUTH_TOKEN'),
-                resource_owner_secret=os.getenv('JIRA_OAUTH_SECRET'),
-                rsa_key=key,
-                signature_method=SIGNATURE_RSA,
-            )
-        }
-
-    return {
-        'type': 'basic',
-        'auth': HTTPBasicAuth(os.getenv('JIRA_USERNAME'), os.getenv('JIRA_PASSWORD'))
-    } if os.getenv('JIRA_USERNAME') else {}
-
-
 def save_results(results, filename='booking-results.json'):
     with open(filename, 'w') as results_file:
         json.dump(results, results_file, indent=2)
 
-
-"""
-
-Main
-
-"""
 
 if __name__ == '__main__':
 
@@ -290,9 +154,6 @@ if __name__ == '__main__':
     # Logs
     logs = []
 
-    # Auth
-    jira_auth = get_jira_auth()
-
     # Main program
 
     logs.append('# Running for {0}'.format(pr_url))
@@ -309,15 +170,18 @@ if __name__ == '__main__':
     # Fetch issue details from Github PR
     issue = get_jira_issue(pr=pr)
 
-    # If not a ticket PR just get an available instance
+    # If not an issue PR just get an available instance
     # Reverse the order to avoid race condition
     instance = None
     if not issue:
         instance = get_pr_test_instance(pr_endpoint)
     else:
         # Use pre-booked instance or get a new one
-        if issue['test_instance']:
-            instance = issue['test_instance']
+        test_instance = None
+        if issue.fields.customfield_13000:
+            test_instance = issue.fields.customfield_13000[0].value
+        if test_instance:
+            instance = test_instance
             logs.append('Issue is already deployed on {0}, reusing.'.format(instance))
 
     if not instance:
@@ -330,7 +194,7 @@ if __name__ == '__main__':
     if results_file:
         save_results({
             'instance': instance,
-            'issue': issue,
+            'issue': issue.key,
             'pr': pr,
             'logs': logs,
         }, results_file)
