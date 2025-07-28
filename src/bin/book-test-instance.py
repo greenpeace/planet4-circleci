@@ -74,8 +74,8 @@ def book_instance(instance, issue):
             'Issue is in an invalid state <{0}>, stopping process.'.format(current_state))
 
     # Fill <instance> field
-    if (not issue.fields.customfield_13000 or issue.fields.customfield_13000[0].value != instance):
-        issue.update(fields={'customfield_13000': [{'value': instance}]})
+    if (not issue.fields.customfield_10201 or issue.fields.customfield_10201[0].value != instance):
+        issue.update(fields={'customfield_10201': [{'value': instance}]})
     else:
         logs.append('Issue is already configured for instance ({0}),'
                     ' skipping configuration.'.format(instance))
@@ -178,8 +178,8 @@ if __name__ == '__main__':
     else:
         # Use pre-booked instance or get a new one
         test_instance = None
-        if issue.fields.customfield_13000:
-            test_instance = issue.fields.customfield_13000[0].value
+        if issue.fields.customfield_10201:
+            test_instance = issue.fields.customfield_10201[0].value
         if test_instance:
             instance = test_instance
             logs.append('Issue is already deployed on {0}, reusing.'.format(instance))
