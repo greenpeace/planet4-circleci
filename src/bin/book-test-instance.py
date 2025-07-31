@@ -175,9 +175,11 @@ if __name__ == '__main__':
     instance = None
     if not issue:
         instance = get_pr_test_instance(pr_endpoint)
+        issue_key = None
     else:
         # Use pre-booked instance or get a new one
         test_instance = None
+        issue_key = issue.key
         if issue.fields.customfield_10201:
             test_instance = issue.fields.customfield_10201[0].value
         if test_instance:
@@ -194,7 +196,7 @@ if __name__ == '__main__':
     if results_file:
         save_results({
             'instance': instance,
-            'issue': issue.key,
+            'issue': issue_key,
             'pr': pr,
             'logs': logs,
         }, results_file)
