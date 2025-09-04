@@ -18,6 +18,20 @@ def _get_headers():
     }
 
 
+def get_pr_details(pr_endpoint):
+    """
+    Fetch PR details from GitHub API
+    """
+
+    response = requests.get(pr_endpoint, headers=_get_headers())
+
+    if response.status_code != 200:
+        raise Exception('Status code {0} calling {1}'.format(
+            response.status_code, pr_endpoint))
+
+    return response.json()
+
+
 def get_repo_endpoints(pr_url):
     """
     Creates API endpoint for a give PR url
@@ -62,10 +76,15 @@ def get_last_commit_date(repo):
     """
     Return last commit date for a repo.
     """
-    commit = api_query(
-        GITHUB_API + '/repos/' + repo + '/commits/main',
-        {'Accept': 'application/vnd.github.v3+json'}
-    )
+    commits_endpoint = '{0}/repos/{1}/commits/main'.format(GITHUB_API, repo)
+
+    response = requests.get(commits_endpoint, headers=_get_headers())
+
+    if response.status_code != 200:
+        raise Exception('Status code {0} calling {1}'.format(
+            response.status_code, commits_endpoint))
+
+    commit = response.json()
 
     return commit['commit']['committer']['date']
 

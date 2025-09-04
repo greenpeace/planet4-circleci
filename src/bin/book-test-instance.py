@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Moved from builder repo. Latest commit there:
-# https://github.com/greenpeace/planet4-builder/commit/d6640747ad20ed54b7e8d40b0920af106880e17f
 
 import argparse
 from base64 import b64decode
@@ -13,7 +11,7 @@ import sys
 from p4.apis import api_query
 from p4.github import (get_last_commit_date, get_repo_endpoints,
                        get_pr_test_instance, has_open_pr_labeled_with_instance,
-                       add_issue_label)
+                       add_issue_label, get_pr_details)
 
 JIRA_SERVER = 'https://greenpeace-planet4.atlassian.net/'
 JIRA_USER = os.getenv('JIRA_USER')
@@ -165,7 +163,7 @@ if __name__ == '__main__':
     if not pr_endpoint:
         raise Exception('No pull request found, aborting.')
 
-    pr = api_query(pr_endpoint)
+    pr = get_pr_details(pr_endpoint)
 
     # Fetch issue details from Github PR
     issue = get_jira_issue(pr=pr)
