@@ -73,7 +73,11 @@ def book_instance(instance, issue):
 
     # Fill <instance> field
     if (not issue.fields.customfield_10201 or issue.fields.customfield_10201[0].value != instance):
-        issue.update(fields={'customfield_10201': [{'value': instance}]})
+        # TODO: Figure out why updating the field through the API is currently failing
+        try:
+            issue.update(fields={'customfield_10201': [{'value': instance}]})
+        except Exception as e:
+            print('Error occurred while updating issue: {0}'.format(e))
     else:
         logs.append('Issue is already configured for instance ({0}),'
                     ' skipping configuration.'.format(instance))
