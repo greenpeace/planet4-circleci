@@ -73,11 +73,11 @@ def book_instance(instance, issue):
 
     # Fill <instance> field
     if (not issue.fields.customfield_10201 or issue.fields.customfield_10201[0].value != instance):
-        # TODO: Figure out why updating the field through the API is currently failing
         try:
             issue.update(fields={'customfield_10201': [{'value': instance}]})
         except Exception:
-            pass
+            print('Failed to update test instance. Probably the token expired.')
+            sys.exit(1)
     else:
         logs.append('Issue is already configured for instance ({0}),'
                     ' skipping configuration.'.format(instance))
